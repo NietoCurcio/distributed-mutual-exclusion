@@ -5,12 +5,11 @@ import threading
 from queue import Queue
 from collections import defaultdict
 import logging
-from typing import Generic, TypeVar
 
-def get_logger():
-    logger = logging.getLogger(__name__)
+def get_logger(name):
+    logger = logging.getLogger(name)
     logger.setLevel(logging.DEBUG)
-    formatter = logging.Formatter('%(asctime)s:%(name)s:%(message)s')
+    formatter = logging.Formatter('%(asctime)s | %(message)s', datefmt='%Y-%m-%d %H:%M:%S')
     file_handler = logging.FileHandler('coordinator.log')
     file_handler.setFormatter(formatter)
     sh_handler = logging.StreamHandler()
@@ -18,6 +17,8 @@ def get_logger():
     logger.addHandler(sh_handler)
     logger.addHandler(file_handler)
     return logger
+
+logger = get_logger(__name__)
 
 class Typings:
     type process_id = str
@@ -48,15 +49,16 @@ class Coordinator:
         return message_id, process_id
 
     def _create_socket(self):
-        # socket.AF_INET = IPv4 # socket.SOCK_DGRAM = UDP
-        server_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        IP_V4_ADDRESS_FAMILY = socket.AF_INET
+        UDP_PROTOCOL = socket.SOCK_DGRAM
+        server_socket = socket.socket(IP_V4_ADDRESS_FAMILY, UDP_PROTOCOL)
         server_socket.bind((self.HOST, self.PORT))
         server_socket.settimeout(0.1)
         return server_socket
     
     def receive_requests(self):
         server_socket = self._create_socket()
-        print("Coordenador aguardando conexões...")
+        logger.info(f"{threading.current_thread().name}: Coordenador aguardando conexões...")
         while not self.exit_flag.is_set():
             try:
                 data, address = server_socket.recvfrom(self.BUFFER_SIZE)
@@ -65,32 +67,38 @@ class Coordinator:
                 with self.lock:
                     if message_id == self.REQUEST_ID:
                         formatted_message = self._format_message(self.GRANT_ID, process_id)
-                        server_socket.sendto(formatted_message.encode(), address)
+                        # server_socket.sendto(formatted_message.encode(), address) 
+                        # it should not be here,
+                        # actually it should be in the process_requests method,
+                        # since it is the one that will send the grant message to the process
+                        # and also the one that will increment the process_count and also 
                         self.queue.put(process_id)
             except socket.timeout:
                 pass
-        print(f"Thread: {threading.current_thread().name} encerrada")
+        logger.info(f"Thread: {threading.current_thread().name} encerrada")
 
     def process_requests(self):
         while not self.exit_flag.is_set():
-            if not self.queue.empty():
-                with self.lock:
-                    process_id = self.queue.get()
-                    self.process_count[process_id] += 1
-                    print(f"Processo {process_id} acessou a região crítica.")
-                    time.sleep(self.SIMULATED_WAIT_TIME)
-        print(f"Thread: {threading.current_thread().name} encerrada")
+            if self.queue.empty():
+                continue
+
+            with self.lock:
+                process_id = self.queue.get()
+                self.process_count[process_id] += 1
+                print(f"Processo {process_id} acessou a região crítica.")
+                time.sleep(self.SIMULATED_WAIT_TIME)
+        logger.info(f"Thread: {threading.current_thread().name} encerrada")
 
     def command_interface(self):
+        input_msg = textwrap.dedent(
+            """
+            Digite o comando:
+            1 - imprimir fila
+            2 - imprimir contador
+            3 - encerrar coordenador
+            """
+        )
         while not self.exit_flag.is_set():
-            input_msg = textwrap.dedent(
-                """
-                Digite o comando:
-                1 - imprimir fila
-                2 - imprimir contador
-                3 - encerrar coordenador
-                """
-            )
             command = input(input_msg)
             if command == '1':
                 with self.lock:
@@ -102,7 +110,7 @@ class Coordinator:
                 print("Encerrando o coordenador...")
                 self.exit_flag.set()
                 break
-        print(f"Thread: {threading.current_thread().name} encerrada")
+        logger.info(f"Thread: {threading.current_thread().name} encerrada")
 
     def start(self):
         request_thread = threading.Thread(target=self.receive_requests, name="request_thread")
@@ -113,13 +121,13 @@ class Coordinator:
         process_thread.start()
         interface_thread.start()
 
-        print(f'\033[92m \nThreads running:\n{[thread.name for thread in threading.enumerate()]} \033[0m')
+        logger.info(f'\033[92m \nThreads running:\n{[thread.name for thread in threading.enumerate()]} \033[0m')
 
         request_thread.join()
         process_thread.join()
         interface_thread.join()
 
-        print(f"Coordenador encerrado (Thread name: {threading.current_thread().name})")
+        logger.info(f"Coordenador encerrado (Thread name: {threading.current_thread().name})")
 
 if __name__ == "__main__":
     coordinator = Coordinator()
