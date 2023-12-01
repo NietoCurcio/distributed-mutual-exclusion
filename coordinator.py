@@ -60,21 +60,21 @@ class Coordinator:
         message_id, process_id, filler = message.split(separator)
         return message_id, process_id
 
-    def _create_socket(self):
+    def _initialize_socket(self):
         IP_V4_ADDRESS_FAMILY = socket.AF_INET
         UDP_PROTOCOL = socket.SOCK_DGRAM
         server_socket = socket.socket(IP_V4_ADDRESS_FAMILY, UDP_PROTOCOL)
         server_socket.bind((self.HOST, self.PORT))
         server_socket.settimeout(0.1)
-        return server_socket
+        self.server_socket = server_socket
     
     @log_exitting_info
     def receive_requests(self):
-        server_socket = self._create_socket()
-        logger.info(f"{threading.current_thread().name}: Coordenador aguardando conexões...")
+        self._initialize_socket()
+        logger.info(f"{threading.current_thread().name}: Coordenador aguardando conexoes...")
         while not self.exit_flag.is_set():
             try:
-                data, address = server_socket.recvfrom(self.BUFFER_SIZE)
+                data, address = self.server_socket.recvfrom(self.BUFFER_SIZE)
                 message = data.decode()
 
                 logger.info(
@@ -106,8 +106,7 @@ class Coordinator:
                     )
                     formatted_message = self._format_message(self.GRANT_ID, process_id)
 
-                    # address (host, pid) should be accessed here
-                    # self.server_socket.sendto(formatted_message.encode(), address) 
+                    self.server_socket.sendto(formatted_message.encode(), address) 
 
                 if message_id == self.RELEASE_ID:
                     self.critical_section_lock.release()
