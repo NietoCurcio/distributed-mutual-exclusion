@@ -28,7 +28,6 @@ class Coordinator:
     REQUEST_ID: str = '1'
     GRANT_ID: str = '2'
     RELEASE_ID: str = '3'
-    SIMULATED_WAIT_TIME: int = 5
     HOST: str = 'localhost'
     PORT: int = 9999
     BUFFER_SIZE: int = 1024
@@ -63,10 +62,18 @@ class Coordinator:
             try:
                 data, address = server_socket.recvfrom(self.BUFFER_SIZE)
                 message = data.decode()
+
+                print("FELIPE")
+                print(address)
+                print("END FELIPE")
+
+                logger.info(
+                    f"{threading.current_thread().name}: Mensagem recebida: {message} de {address}"
+                )
                 message_id, process_id = self._parse_message(message)
                 with self.lock:
                     if message_id == self.REQUEST_ID:
-                        formatted_message = self._format_message(self.GRANT_ID, process_id)
+                        # formatted_message = self._format_message(self.GRANT_ID, process_id)
                         # server_socket.sendto(formatted_message.encode(), address) 
                         # it should not be here,
                         # actually it should be in the process_requests method,
@@ -86,7 +93,6 @@ class Coordinator:
                 process_id = self.queue.get()
                 self.process_count[process_id] += 1
                 print(f"Processo {process_id} acessou a região crítica.")
-                time.sleep(self.SIMULATED_WAIT_TIME)
         logger.info(f"Thread: {threading.current_thread().name} encerrada")
 
     def command_interface(self):
