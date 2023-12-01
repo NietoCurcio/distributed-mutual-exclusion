@@ -1,5 +1,4 @@
 import textwrap
-import time
 import socket
 import threading
 from queue import Queue
@@ -22,7 +21,11 @@ logger = get_logger(__name__)
 
 class Typings:
     type process_id = str
+    type message_id = str
     type counter = int
+    type host = str
+    type pid = int
+    type address = tuple[host, pid]
 
 class Coordinator:
     REQUEST_ID: str = '1'
@@ -33,10 +36,20 @@ class Coordinator:
     BUFFER_SIZE: int = 1024
 
     def __init__(self):
-        self.queue = Queue()
+        self.queue: Queue[tuple[Typings.process_id, Typings.message_id, Typings.address]] = Queue()
         self.process_count : dict[Typings.process_id, Typings.counter]= defaultdict(int)
-        self.lock = threading.Lock()
         self.exit_flag = threading.Event()
+        
+        self.queue_lock = threading.Lock()
+        self.critical_section_lock = threading.Lock()
+
+        self.server_socket: socket.socket | None = None
+
+    def log_exitting_info(thread_fn):
+        def wrapper(*args, **kwargs):
+            thread_fn(*args, **kwargs)
+            logger.info(f"Thread {threading.current_thread().name} encerrada")
+        return wrapper
 
     def _format_message(self, message_id: str, process_id: str, size: int = 10, separator = '|'):
         message = f"{message_id}{separator}{process_id}{separator}"
@@ -55,6 +68,7 @@ class Coordinator:
         server_socket.settimeout(0.1)
         return server_socket
     
+    @log_exitting_info
     def receive_requests(self):
         server_socket = self._create_socket()
         logger.info(f"{threading.current_thread().name}: Coordenador aguardando conexões...")
@@ -63,38 +77,46 @@ class Coordinator:
                 data, address = server_socket.recvfrom(self.BUFFER_SIZE)
                 message = data.decode()
 
-                print("FELIPE")
-                print(address)
-                print("END FELIPE")
-
                 logger.info(
                     f"{threading.current_thread().name}: Mensagem recebida: {message} de {address}"
                 )
                 message_id, process_id = self._parse_message(message)
-                with self.lock:
-                    if message_id == self.REQUEST_ID:
-                        # formatted_message = self._format_message(self.GRANT_ID, process_id)
-                        # server_socket.sendto(formatted_message.encode(), address) 
-                        # it should not be here,
-                        # actually it should be in the process_requests method,
-                        # since it is the one that will send the grant message to the process
-                        # and also the one that will increment the process_count and also 
-                        self.queue.put(process_id)
+
+                if message_id != self.REQUEST_ID and message_id != self.RELEASE_ID:
+                    logger.error(f"{threading.current_thread().name}: Mensagem inválida: {message}")
+                    continue
+                
+                with self.queue_lock:
+                    self.queue.put((process_id, message_id, address))
             except socket.timeout:
                 pass
-        logger.info(f"Thread: {threading.current_thread().name} encerrada")
 
+    @log_exitting_info
     def process_requests(self):
         while not self.exit_flag.is_set():
             if self.queue.empty():
                 continue
 
-            with self.lock:
-                process_id = self.queue.get()
-                self.process_count[process_id] += 1
-                print(f"Processo {process_id} acessou a região crítica.")
-        logger.info(f"Thread: {threading.current_thread().name} encerrada")
+            with self.queue_lock:
+                process_id, message_id, address = self.queue.get()
+                if message_id == self.REQUEST_ID:
+                    self.critical_section_lock.acquire()
+                    logger.info(
+                        f"{threading.current_thread().name}: Processo {process_id} requisitou o recurso"
+                    )
+                    formatted_message = self._format_message(self.GRANT_ID, process_id)
 
+                    # address (host, pid) should be accessed here
+                    # self.server_socket.sendto(formatted_message.encode(), address) 
+
+                if message_id == self.RELEASE_ID:
+                    self.critical_section_lock.release()
+                    logger.info(
+                        f"{threading.current_thread().name}: Processo {process_id} liberou o recurso"
+                    )
+                
+
+    @log_exitting_info
     def command_interface(self):
         input_msg = textwrap.dedent(
             """
@@ -107,15 +129,14 @@ class Coordinator:
         while not self.exit_flag.is_set():
             command = input(input_msg)
             if command == '1':
-                with self.lock:
+                with self.queue_lock:
                     print(list(self.queue.queue))
             elif command == '2':
-                with self.lock:
+                with self.queue_lock:
                     print(self.process_count)
             elif command == '3':
-                print("Encerrando o coordenador...")
+                logger.info("Encerrando o coordenador...")
                 self.exit_flag.set()
-        logger.info(f"Thread: {threading.current_thread().name} encerrada")
 
     def start(self):
         request_thread = threading.Thread(target=self.receive_requests, name="request_thread")
@@ -126,7 +147,7 @@ class Coordinator:
         process_thread.start()
         interface_thread.start()
 
-        print(f'\033[92m \nThreads running:\n{[thread.name for thread in threading.enumerate()]} \033[0m')
+        print(f'\033[92m \nThreads running:\n{[thread.name for thread in threading.enumerate()]} \033[0m\n')
 
         request_thread.join()
         process_thread.join()
