@@ -3,19 +3,25 @@ import os
 import time
 
 REQUEST_ID = '1'
+GRANT_ID = '2'
+RELEASE_ID = '3'
 
 HOST = 'localhost'
 PORT = 9999
 BUFFER_SIZE = 1024
 
-INTERVAL_TIME = 20
-LOOP_RANGE = 5
+INTERVAL_TIME = 1
+LOOP_RANGE = 1
 FILENAME = 'resultado.txt'
 
 def _format_message(message_id: str, process_id: str, size=10, separator='|'):
     message = f"{message_id}{separator}{process_id}{separator}"
     message += '0' * (size - len(message))
     return message[:size]
+
+def _parse_message(message: str, separator='|'):
+    message_id, process_id, filler = message.split(separator)
+    return message_id, process_id
 
 def send_request(process_id):
     client_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
@@ -28,6 +34,16 @@ def send_request(process_id):
     data, address = client_socket.recvfrom(BUFFER_SIZE)
     message = data.decode()
     print(f"Processo \033[92m{process_id}\033[0m recebeu uma mensagem do coordenador: {message}.")
+
+    message_id, process_id = _parse_message(message)
+
+    print(f'message_id: {message_id}')
+    if message_id == GRANT_ID:
+        'TODO'
+        # 1. get_milliseconds_current_time()
+        # 2. open_file_append_mode_and_write_and_close()
+        # 3. time.sleep(INTERVAL_TIME)
+        # 4. send_release_message() to coordinator
 
 def _get_PID():
     pid = os.getpid()
@@ -42,14 +58,6 @@ def main():
     for i in range(LOOP_RANGE):
         send_request(process_id)
         time.sleep(INTERVAL_TIME)
-
-"""
-Ao obter acesso,
-o processo abre o arquivo resultado.txt para escrita emmodo append,
-obter a hora atual do sistema, escrever o seu identificador e a hora atual (incluindomilisegundos)
-no final do arquivo, fechar o arquivo, e depois aguardar k segundos (usando a funçãosleep())
-Isto finaliza a região crítica
-"""
 
 if __name__ == "__main__":
     main()
