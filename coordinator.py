@@ -121,7 +121,7 @@ class Coordinator:
         process_thread.start()
         interface_thread.start()
 
-        logger.info(f'\033[92m \nThreads running:\n{[thread.name for thread in threading.enumerate()]} \033[0m')
+        print(f'\033[92m \nThreads running:\n{[thread.name for thread in threading.enumerate()]} \033[0m')
 
         request_thread.join()
         process_thread.join()
