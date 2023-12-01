@@ -3,10 +3,14 @@ import os
 import time
 
 REQUEST_ID = '1'
+
 HOST = 'localhost'
 PORT = 9999
+BUFFER_SIZE = 1024
+
 INTERVAL_TIME = 20
 LOOP_RANGE = 5
+FILENAME = 'resultado.txt'
 
 def _format_message(message_id: str, process_id: str, size=10, separator='|'):
     message = f"{message_id}{separator}{process_id}{separator}"
@@ -20,6 +24,10 @@ def send_request(process_id):
     message = _format_message(REQUEST_ID, process_id)
     client_socket.sendto(message.encode(), coordinator_address)
     print(f"Processo \033[92m{process_id}\033[0m enviou uma requisição ao coordenador.")
+
+    data, address = client_socket.recvfrom(BUFFER_SIZE)
+    message = data.decode()
+    print(f"Processo \033[92m{process_id}\033[0m recebeu uma mensagem do coordenador: {message}.")
 
 def _get_PID():
     pid = os.getpid()
