@@ -109,7 +109,6 @@ class Coordinator:
             elif command == '3':
                 print("Encerrando o coordenador...")
                 self.exit_flag.set()
-                break
         logger.info(f"Thread: {threading.current_thread().name} encerrada")
 
     def start(self):
