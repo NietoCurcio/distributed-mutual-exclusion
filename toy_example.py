@@ -1,48 +1,93 @@
 import threading
 import time
+from collections import deque
 
-class A:
+FINAL_RESULT = []
+
+INITIAL_LOCK_TIME = 5
+SIMULATED_TIME = 3
+
+POSSIBLE_ORDERS = {
+    'order1': ['first-call', 'second-call', 'third-call'],
+    'order2': ['second-call', 'first-call', 'third-call'],
+    'order3': ['second-call', 'third-call', 'first-call'],
+    'order4': ['third-call', 'second-call', 'first-call'],
+    'order5': ['third-call', 'first-call', 'second-call'],
+    'order6': ['first-call', 'third-call', 'second-call']
+}
+SELECTED_ORDER = 'order5'
+
+order = deque()
+selected_order = POSSIBLE_ORDERS[SELECTED_ORDER]
+for item in selected_order:
+    order.append(item)
+
+class bcolors:
+    HEADER = '\033[95m'
+    OKBLUE = '\033[94m'
+    OKCYAN = '\033[96m'
+    OKGREEN = '\033[92m'
+    WARNING = '\033[93m'
+    FAIL = '\033[91m'
+    ENDC = '\033[0m'
+    BOLD = '\033[1m'
+    UNDERLINE = '\033[4m'
+
+class ThreadsStudy:
     def __init__(self):
         self.lock = threading.Lock()
+        self.order_condition = threading.Condition()
 
-    def anotherDecorator(f):
-        def wrapper(*args, **kwargs):
-            f(*args, **kwargs)
-        return wrapper
+    def lock_thread_for_time(self, initial_lock_time):
+        with self.lock:
+            print(f"{bcolors.HEADER}Initial locked for {initial_lock_time} secs\n{bcolors.ENDC}")
+            time.sleep(initial_lock_time)
 
-    def someFn(f):
-        def wrapper(*args, **kwargs):
-            f(*args, **kwargs)
-        return wrapper
+    def is_thread_turn(self, thread, order):
+        return thread == order[0]
 
-    @anotherDecorator
-    @someFn
-    def fn(self):
-        self.lock.acquire()
-        print("ESTOU EM FN")
-        time.sleep(5)
-        self.lock.release()
-    
-    @anotherDecorator
-    @someFn
-    def fn2(self):
-        self.lock.acquire()
-        print("ESTOU EM FN2")
-        self.lock.release()
+    def fn(self, thread, order):
+        print(f"{bcolors.OKCYAN}TH: {thread}, Locked? {self.lock.locked()}{bcolors.ENDC}")
 
-    @anotherDecorator
-    @someFn
-    def fn3(self):
-        print("ESTOU EM FN3")
-    
-a = A()
-th = threading.Thread(target=a.fn, name='dale1')
-th2 = threading.Thread(target=a.fn2, name='dale2')
-th3 = threading.Thread(target=a.fn3, name='dale3')
-th.start()
+        with self.order_condition:
+            """
+            while not self.is_thread_turn(thread, order):
+                 print(f"{bcolors.WARNING}TH: {thread} - order_condition.wait(){bcolors.ENDC}")
+                 self.order_condition.wait()
+            THIS COMMENTED CODE IS THE SAME AS THE wait_for version
+            """
+            self.order_condition.wait_for(lambda : self.is_thread_turn(thread, order))
+
+            print(f"{bcolors.OKGREEN}TH: {thread} - can execute{bcolors.ENDC}")
+            print(f"{bcolors.OKBLUE}thread: {thread}, current order: {order}{bcolors.ENDC}")
+
+            with self.lock:
+                print(f"fn: {thread} - simulating {SIMULATED_TIME} secs")
+                time.sleep(SIMULATED_TIME)
+                order.popleft()
+                FINAL_RESULT.append(thread)
+                self.order_condition.notify_all()
+
+a = ThreadsStudy()
+
+name_first = 'first-call'
+name_second = 'second-call'
+name_third = 'third-call'
+
+th0 = threading.Thread(target=a.lock_thread_for_time, args=(INITIAL_LOCK_TIME,), name='lock_thread')
+th0.start()
+
+th1 = threading.Thread(target=a.fn, args=(name_first, order), name=name_first)
+th2 = threading.Thread(target=a.fn, args=(name_second, order), name=name_second)
+th3 = threading.Thread(target=a.fn, args=(name_third, order), name=name_third)
+
+th1.start()
 th2.start()
 th3.start()
 
-th.join()
+th0.join()
+th1.join()
 th2.join()
 th3.join()
+
+print(f"Final result: {FINAL_RESULT}, FINAL_RESULT == selected_order? {FINAL_RESULT == selected_order}")
