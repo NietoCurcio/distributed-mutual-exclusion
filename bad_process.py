@@ -1,13 +1,9 @@
 import socket
-import os
-import time
-from process import REQUEST_ID, GRANT_ID, RELEASE_ID
+from process import REQUEST_ID, GRANT_ID
 from process import HOST, PORT, BUFFER_SIZE
-from process import INTERVAL_TIME, LOOP_RANGE
-from process import FILENAME
+from process import LOOP_RANGE
 from process import Helper
 from process import Process
-
 
 class BadProcess(Process):
     def send_request(self, process_id, iteration):
