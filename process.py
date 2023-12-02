@@ -14,6 +14,18 @@ INTERVAL_TIME = 1
 LOOP_RANGE = 1
 FILENAME = 'resultado.txt'
 
+def _get_milliseconds_current_time():
+    return time.time()
+
+def write_in_critical_section(process_id, current_time):
+    with open(FILENAME, 'a') as file:
+        file.write(f'{process_id} {current_time}\n')
+
+def send_release(process_id, client_socket, coordinator_address):
+    message = _format_message(RELEASE_ID, process_id)
+    client_socket.sendto(message.encode(), coordinator_address)
+    print(f"Processo \033[92m{process_id}\033[0m enviou uma mensagem de release ao coordenador.")
+
 def _format_message(message_id: str, process_id: str, size=10, separator='|'):
     message = f"{message_id}{separator}{process_id}{separator}"
     message += '0' * (size - len(message))
@@ -39,11 +51,11 @@ def send_request(process_id):
 
     print(f'message_id: {message_id}')
     if message_id == GRANT_ID:
-        'TODO'
-        # 1. get_milliseconds_current_time()
-        # 2. open_file_append_mode_and_write_and_close()
-        # 3. time.sleep(INTERVAL_TIME)
-        # 4. send_release_message() to coordinator
+        current_time = _get_milliseconds_current_time()
+        write_in_critical_section(process_id, current_time)
+        print(f"Processo \033[92m{process_id}\033[0m escreveu no arquivo.")
+        time.sleep(INTERVAL_TIME)
+        send_release(process_id, client_socket, coordinator_address)
 
 def _get_PID():
     pid = os.getpid()
