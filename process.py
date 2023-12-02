@@ -10,16 +10,16 @@ HOST = 'localhost'
 PORT = 9999
 BUFFER_SIZE = 1024
 
-INTERVAL_TIME = 1
-LOOP_RANGE = 1
+INTERVAL_TIME = 10
+LOOP_RANGE = 3
 FILENAME = 'resultado.txt'
 
 def _get_milliseconds_current_time():
     return time.time()
 
-def write_in_critical_section(process_id, current_time):
+def write_in_critical_section(process_id, current_time, step):
     with open(FILENAME, 'a') as file:
-        file.write(f'{process_id} {current_time}\n')
+        file.write(f'PID={process_id} | TIMESTAMP={current_time} | STEP={step+1}/{LOOP_RANGE}\n')
 
 def send_release(process_id, client_socket, coordinator_address):
     message = _format_message(RELEASE_ID, process_id)
@@ -35,7 +35,7 @@ def _parse_message(message: str, separator='|'):
     message_id, process_id, filler = message.split(separator)
     return message_id, process_id
 
-def send_request(process_id):
+def send_request(process_id, iteration):
     client_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     coordinator_address = (HOST, PORT)
 
@@ -52,7 +52,7 @@ def send_request(process_id):
     print(f'message_id: {message_id}')
     if message_id == GRANT_ID:
         current_time = _get_milliseconds_current_time()
-        write_in_critical_section(process_id, current_time)
+        write_in_critical_section(process_id, current_time, iteration)
         print(f"Processo \033[92m{process_id}\033[0m escreveu no arquivo.")
         time.sleep(INTERVAL_TIME)
         send_release(process_id, client_socket, coordinator_address)
@@ -68,8 +68,7 @@ def main():
     process_id = _get_PID()
     print(f"Processo \033[92m{process_id}\033[0m inicializado.")
     for i in range(LOOP_RANGE):
-        send_request(process_id)
-        time.sleep(INTERVAL_TIME)
+        send_request(process_id, i)
 
 if __name__ == "__main__":
     main()
