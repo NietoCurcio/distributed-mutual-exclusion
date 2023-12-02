@@ -113,7 +113,7 @@ class Coordinator:
                     logger.info(
                         f"{threading.current_thread().name}: Processo {process_id} liberou o recurso"
                     )
-                
+                    self.process_count[process_id] += 1
 
     @log_exitting_info
     def command_interface(self):
