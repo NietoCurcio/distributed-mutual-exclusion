@@ -8,7 +8,7 @@ import logging
 def get_logger(name):
     logger = logging.getLogger(name)
     logger.setLevel(logging.DEBUG)
-    formatter = logging.Formatter('%(asctime)s | %(message)s', datefmt='%Y-%m-%d %H:%M:%S')
+    formatter = logging.Formatter('%(levelname)s | %(asctime)s | %(message)s', datefmt='%Y-%m-%d %H:%M:%S')
     file_handler = logging.FileHandler('coordinator.log')
     file_handler.setFormatter(formatter)
     sh_handler = logging.StreamHandler()
@@ -37,7 +37,7 @@ class Coordinator:
 
     def __init__(self):
         self.queue: Queue[tuple[Typings.process_id, Typings.message_id, Typings.address]] = Queue()
-        self.process_count : dict[Typings.process_id, Typings.counter]= defaultdict(int)
+        self.process_count : dict[Typings.process_id, Typings.counter] = defaultdict(int)
         self.exit_flag = threading.Event()
         
         self.queue_lock = threading.Lock()
