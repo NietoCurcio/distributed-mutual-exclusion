@@ -20,12 +20,12 @@ def get_logger(name):
 logger = get_logger(__name__)
 
 class Typings:
-    type process_id = str
-    type message_id = str
-    type counter = int
-    type host = str
-    type pid = int
-    type address = tuple[host, pid]
+    process_id = str
+    message_id = str
+    counter = int
+    host = str
+    pid = int
+    address = tuple[host, pid]
 
 class Coordinator:
     REQUEST_ID: str = '1'
