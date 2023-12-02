@@ -126,7 +126,7 @@ class Coordinator:
         thread_name = threading.current_thread().name
         with self.ths_order_condition:
             self.ths_order_condition.wait_for(
-                lambda : self.is_thread_turn(thread_name, process_acquire_queue)
+                lambda : self._is_thread_turn(thread_name, process_acquire_queue)
             )
 
             self.critical_section_lock.acquire()
