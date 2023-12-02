@@ -10,7 +10,7 @@ HOST = 'localhost'
 PORT = 9999
 BUFFER_SIZE = 1024
 
-INTERVAL_TIME = 30
+INTERVAL_TIME = 10
 LOOP_RANGE = 3
 FILENAME = 'resultado.txt'
 
