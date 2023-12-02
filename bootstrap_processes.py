@@ -1,7 +1,7 @@
 import multiprocessing
 import subprocess
 
-N_PROCESSES = 2
+N_PROCESSES = 4
 
 def run_process():
     subprocess.run(["python", "process.py"])
