@@ -30,6 +30,15 @@ class Helper:
         message_id, process_id, filler = message.split(separator)
         return message_id, process_id
     
+    @staticmethod
+    def format_timestamp_with_milliseconds(timestamp: float):
+        timestamp = 1701557732.966179
+        milliseconds = int((timestamp - int(timestamp)) * 1e6)
+        time_struct = time.gmtime(timestamp)
+        formatted_time = time.strftime('%Y-%m-%d %H:%M:%S', time_struct)
+        formatted_time_with_microseconds = f"{formatted_time}.{milliseconds:06d}"
+        return formatted_time_with_microseconds
+    
 class Process:
     def get_PID(self):
         pid = os.getpid()
@@ -44,7 +53,7 @@ class Process:
 
     def _write_in_critical_section(self, process_id, current_time, step):
         with open(FILENAME, 'a') as file:
-            file.write(f'PID={process_id} | TIMESTAMP={current_time} | STEP={step+1}/{LOOP_RANGE}\n')
+            file.write(f'{process_id} | {current_time} | {step+1}/{LOOP_RANGE}\n')
         print(f"Processo \033[92m{process_id}\033[0m escreveu no arquivo.")
     
     def _send_release(self, process_id, client_socket, coordinator_address):
@@ -67,7 +76,7 @@ class Process:
         message_id, process_id = Helper.parse_message(message)
 
         if message_id == GRANT_ID:
-            current_time = Helper.get_milliseconds_current_time()
+            current_time = Helper.format_timestamp_with_milliseconds(Helper.get_milliseconds_current_time())
             self._write_in_critical_section(process_id, current_time, iteration)
             self._simulate_long_running_process(process_id)
             self._send_release(process_id, client_socket, coordinator_address)
