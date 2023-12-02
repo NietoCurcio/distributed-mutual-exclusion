@@ -84,7 +84,6 @@ th3 = threading.Thread(target=a.fn, args=(name_third, order), name=name_third)
 th1.start()
 th2.start()
 th3.start()
-th2.start()
 
 th0.join()
 th1.join()
