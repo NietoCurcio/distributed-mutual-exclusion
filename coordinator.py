@@ -93,6 +93,11 @@ class Coordinator:
 
     def _process_release(self, process_id: str, address: Typings.address):
         if not self.critical_section_lock.locked():
+            """
+            TODO: handle when process tries to release the resource without having it
+            example: P1 tries to release the resource, but P2 is the one who has it
+            As the code is, P1 will release the resource, but it should not
+            """
             logger.error(
                 f"{threading.current_thread().name}: Processo {process_id} tentou liberar o recurso sem possuí-lo"
             )
