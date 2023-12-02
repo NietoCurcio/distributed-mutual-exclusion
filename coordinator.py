@@ -42,6 +42,7 @@ class Coordinator:
         
         self.queue_lock = threading.Lock()
         self.critical_section_lock = threading.Lock()
+        self.lock_owner: Typings.process_id | None = None
 
         self.server_socket: socket.socket | None = None
 
@@ -93,16 +94,18 @@ class Coordinator:
 
     def _process_release(self, process_id: str, address: Typings.address):
         if not self.critical_section_lock.locked():
-            """
-            TODO: handle when process tries to release the resource without having it
-            example: P1 tries to release the resource, but P2 is the one who has it
-            As the code is, P1 will release the resource, but it should not
-            """
             logger.error(
-                f"{threading.current_thread().name}: Processo {process_id} tentou liberar o recurso sem possuí-lo"
+                f"{threading.current_thread().name}: Processo {process_id} tentou liberar o recurso sem o recurso estar ocupado"
+            )
+            return
+        
+        if self.lock_owner != process_id:
+            logger.error(
+                f"{threading.current_thread().name}: Processo {process_id} tentou liberar o recurso, mas ele nao eh o dono do recurso atualmente"
             )
             return
 
+        self.lock_owner = None
         self.critical_section_lock.release()
         logger.info(
             f"{threading.current_thread().name}: Processo {process_id} liberou o recurso"
@@ -111,14 +114,20 @@ class Coordinator:
 
     def _process_acquire(self, process_id: str, address: Typings.address):
         if self.critical_section_lock.locked():
-            logger.info(
-                f"{threading.current_thread().name}: Processo {process_id} requisitou o recurso, mas ele está ocupado"
-            )
+            # logger.info(
+            #     f"{threading.current_thread().name}: Processo {process_id} requisitou o recurso, mas ele está ocupado, então ele foi colocado na fila"
+            # )
+            """
+            TODO: fix process_requests, _process_acquire
+            so that when a process that was put back in the queue
+            does not keep calling _process_acquire again and again, it should call just once
+            """
             with self.queue_lock:
                 self.queue.put((process_id, self.REQUEST_ID, address))
             return
         
         self.critical_section_lock.acquire()
+        self.lock_owner = process_id
         logger.info(
             f"{threading.current_thread().name}: Processo {process_id} requisitou o recurso"
         )
