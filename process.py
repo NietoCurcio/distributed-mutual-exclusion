@@ -10,9 +10,15 @@ HOST = 'localhost'
 PORT = 9999
 BUFFER_SIZE = 1024
 
-INTERVAL_TIME = 10
+INTERVAL_TIME = 1
 LOOP_RANGE = 3
 FILENAME = 'resultado.txt'
+
+"""TODO: improve the cleaness of this code"""
+
+def simulate_long_running_process(process_id):
+    print(f"Processo \033[92m{process_id}\033[0m iniciou um processo longo ({INTERVAL_TIME} secs).")
+    time.sleep(INTERVAL_TIME)
 
 def _get_milliseconds_current_time():
     return time.time()
@@ -20,7 +26,8 @@ def _get_milliseconds_current_time():
 def write_in_critical_section(process_id, current_time, step):
     with open(FILENAME, 'a') as file:
         file.write(f'PID={process_id} | TIMESTAMP={current_time} | STEP={step+1}/{LOOP_RANGE}\n')
-
+    print(f"Processo \033[92m{process_id}\033[0m escreveu no arquivo.")
+    
 def send_release(process_id, client_socket, coordinator_address):
     message = _format_message(RELEASE_ID, process_id)
     client_socket.sendto(message.encode(), coordinator_address)
@@ -49,12 +56,10 @@ def send_request(process_id, iteration):
 
     message_id, process_id = _parse_message(message)
 
-    print(f'message_id: {message_id}')
     if message_id == GRANT_ID:
         current_time = _get_milliseconds_current_time()
         write_in_critical_section(process_id, current_time, iteration)
-        print(f"Processo \033[92m{process_id}\033[0m escreveu no arquivo.")
-        time.sleep(INTERVAL_TIME)
+        simulate_long_running_process(process_id)
         send_release(process_id, client_socket, coordinator_address)
 
 def _get_PID():
