@@ -109,8 +109,13 @@ class Coordinator:
             logger.info(
                 f"{threading.current_thread().name}: Processo {process_id} requisitou o recurso, mas ele está ocupado"
             )
-            'TODO: colocar na fila'
+            """TODO: put in queue, it should keep the correct order of requests, i.e. FIFO"""
+            """example: P1 send request, P2 send request, P1 send release
+            in that situation, P2 would cause a deadlock, the release would be in queue, but the
+            process_requests thread would be stuck in the acquire lock, so it would never process
+            """
             return
+        
         self.critical_section_lock.acquire()
         logger.info(
             f"{threading.current_thread().name}: Processo {process_id} requisitou o recurso"
