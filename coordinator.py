@@ -113,19 +113,6 @@ class Coordinator:
         self.process_count[process_id] += 1
 
     def _process_acquire(self, process_id: str, address: Typings.address):
-        if self.critical_section_lock.locked():
-            # logger.info(
-            #     f"{threading.current_thread().name}: Processo {process_id} requisitou o recurso, mas ele está ocupado, então ele foi colocado na fila"
-            # )
-            """
-            TODO: fix process_requests, _process_acquire
-            so that when a process that was put back in the queue
-            does not keep calling _process_acquire again and again, it should call just once
-            """
-            with self.queue_lock:
-                self.queue.put((process_id, self.REQUEST_ID, address))
-            return
-        
         self.critical_section_lock.acquire()
         self.lock_owner = process_id
         logger.info(
@@ -143,11 +130,16 @@ class Coordinator:
             with self.queue_lock:
                 process_id, message_id, address = self.queue.get()
 
+            if message_id == self.REQUEST_ID:
+                process_acquire_thread = threading.Thread(
+                    target=self._process_acquire,
+                    args=(process_id, address),
+                    name=f"process_acquire_{process_id}"
+                )
+                process_acquire_thread.start()
+        
             if message_id == self.RELEASE_ID:
                 self._process_release(process_id, address)
-
-            if message_id == self.REQUEST_ID:
-                self._process_acquire(process_id, address)
 
     @log_exitting_info
     def command_interface(self):
