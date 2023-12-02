@@ -91,6 +91,33 @@ class Coordinator:
             except socket.timeout:
                 pass
 
+    def _process_release(self, process_id: str, address: Typings.address):
+        if not self.critical_section_lock.locked():
+            logger.error(
+                f"{threading.current_thread().name}: Processo {process_id} tentou liberar o recurso sem possuí-lo"
+            )
+            return
+
+        self.critical_section_lock.release()
+        logger.info(
+            f"{threading.current_thread().name}: Processo {process_id} liberou o recurso"
+        )
+        self.process_count[process_id] += 1
+
+    def _process_acquire(self, process_id: str, address: Typings.address):
+        if self.critical_section_lock.locked():
+            logger.info(
+                f"{threading.current_thread().name}: Processo {process_id} requisitou o recurso, mas ele está ocupado"
+            )
+            'TODO: colocar na fila'
+            return
+        self.critical_section_lock.acquire()
+        logger.info(
+            f"{threading.current_thread().name}: Processo {process_id} requisitou o recurso"
+        )
+        formatted_message = self._format_message(self.GRANT_ID, process_id)
+        self.server_socket.sendto(formatted_message.encode(), address)
+
     @log_exitting_info
     def process_requests(self):
         while not self.exit_flag.is_set():
@@ -99,21 +126,12 @@ class Coordinator:
 
             with self.queue_lock:
                 process_id, message_id, address = self.queue.get()
-                if message_id == self.REQUEST_ID:
-                    self.critical_section_lock.acquire()
-                    logger.info(
-                        f"{threading.current_thread().name}: Processo {process_id} requisitou o recurso"
-                    )
-                    formatted_message = self._format_message(self.GRANT_ID, process_id)
 
-                    self.server_socket.sendto(formatted_message.encode(), address) 
+            if message_id == self.RELEASE_ID:
+                self._process_release(process_id, address)
 
-                if message_id == self.RELEASE_ID:
-                    self.critical_section_lock.release()
-                    logger.info(
-                        f"{threading.current_thread().name}: Processo {process_id} liberou o recurso"
-                    )
-                    self.process_count[process_id] += 1
+            if message_id == self.REQUEST_ID:
+                self._process_acquire(process_id, address)
 
     @log_exitting_info
     def command_interface(self):
