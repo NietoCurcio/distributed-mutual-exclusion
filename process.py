@@ -11,7 +11,7 @@ PORT = 9999
 BUFFER_SIZE = 1024
 
 INTERVAL_TIME = 30
-LOOP_RANGE = 1
+LOOP_RANGE = 3
 FILENAME = 'resultado.txt'
 
 class Helper:
