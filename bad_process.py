@@ -25,7 +25,7 @@ class BadProcess(Process):
         message = data.decode()
         print(f"Processo \033[92m{process_id}\033[0m recebeu uma mensagem do coordenador: {message}.")
 
-        message_id, process_id = Helper._parse_message(message)
+        message_id, process_id = Helper.parse_message(message)
 
         if message_id == GRANT_ID:
             current_time = Helper.get_milliseconds_current_time()
