@@ -20,7 +20,7 @@ class A:
     def fn(self):
         self.lock.acquire()
         print("ESTOU EM FN")
-        time.sleep(15)
+        time.sleep(5)
         self.lock.release()
     
     @anotherDecorator
@@ -38,9 +38,11 @@ class A:
 a = A()
 th = threading.Thread(target=a.fn, name='dale1')
 th2 = threading.Thread(target=a.fn2, name='dale2')
-th2 = threading.Thread(target=a.fn3, name='dale3')
+th3 = threading.Thread(target=a.fn3, name='dale3')
 th.start()
 th2.start()
+th3.start()
 
 th.join()
 th2.join()
+th3.join()
