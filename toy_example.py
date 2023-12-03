@@ -4,8 +4,9 @@ from collections import deque
 
 FINAL_RESULT = []
 
-INITIAL_LOCK_TIME = 5
-SIMULATED_TIME = 3
+INITIAL_LOCK_TIME = 20
+INTERVAL_RELEASE_TIME = 10
+SIMULATED_TIME = 5
 
 POSSIBLE_ORDERS = {
     'order1': ['first-call', 'second-call', 'third-call'],
@@ -38,6 +39,13 @@ class ThreadsStudy:
         self.lock = threading.Lock()
         self.order_condition = threading.Condition()
 
+    def setInterval(self, main_thread):
+        if main_thread.is_alive():
+            threading.Timer(INTERVAL_RELEASE_TIME, lambda:self.setInterval(main_thread)).start()
+        if self.lock.locked():
+            self.lock.release()
+            print(f"{bcolors.HEADER}Released lock{bcolors.ENDC}")
+    
     def lock_thread_for_time(self, initial_lock_time):
         with self.lock:
             print(f"{bcolors.HEADER}Initial locked for {initial_lock_time} secs\n{bcolors.ENDC}")
@@ -47,7 +55,7 @@ class ThreadsStudy:
         return thread == order[0]
 
     def fn(self, thread, order):
-        print(f"{bcolors.OKCYAN}TH: {thread}, Locked? {self.lock.locked()}{bcolors.ENDC}")
+        print(f"{bcolors.OKCYAN}TH: {thread}, Locked initially? {self.lock.locked()}{bcolors.ENDC}")
 
         with self.order_condition:
             """
@@ -58,21 +66,27 @@ class ThreadsStudy:
             """
             self.order_condition.wait_for(lambda : self.is_thread_turn(thread, order))
 
-            print(f"{bcolors.OKGREEN}TH: {thread} - can execute{bcolors.ENDC}")
-            print(f"{bcolors.OKBLUE}thread: {thread}, current order: {order}{bcolors.ENDC}")
+            print(f"{bcolors.OKBLUE}TH: {thread}, current order: {order}{bcolors.ENDC}")
+            print(f"{bcolors.OKGREEN}TH: {thread} - can execute (correct FIFO order) {bcolors.ENDC}")
 
-            with self.lock:
-                print(f"fn: {thread} - simulating {SIMULATED_TIME} secs")
-                time.sleep(SIMULATED_TIME)
-                order.popleft()
-                FINAL_RESULT.append(thread)
-                self.order_condition.notify_all()
+            print(f"{bcolors.OKCYAN}TH: {thread} is locked? {self.lock.locked()}{bcolors.ENDC}")
+            self.lock.acquire()
+            print(f"fn: {thread} - simulating {SIMULATED_TIME} secs{bcolors.ENDC} of execution")
+            time.sleep(SIMULATED_TIME)
+            order.popleft()
+            FINAL_RESULT.append(thread)
+            self.order_condition.notify_all()
 
 a = ThreadsStudy()
 
 name_first = 'first-call'
 name_second = 'second-call'
 name_third = 'third-call'
+
+main_thread = threading.current_thread()
+th = threading.Thread(target=a.setInterval, args=(main_thread,), name='setInterval')
+th.start()
+th.join()
 
 th0 = threading.Thread(target=a.lock_thread_for_time, args=(INITIAL_LOCK_TIME,), name='lock_thread')
 th0.start()
