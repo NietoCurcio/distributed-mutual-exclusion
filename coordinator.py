@@ -3,6 +3,7 @@ import socket
 import threading
 from queue import Queue
 from collections import defaultdict
+import errno
 import logging
 
 def get_logger(name):
@@ -68,7 +69,7 @@ class Coordinator:
         UDP_PROTOCOL = socket.SOCK_DGRAM
         server_socket = socket.socket(IP_V4_ADDRESS_FAMILY, UDP_PROTOCOL)
         server_socket.bind((self.HOST, self.PORT))
-        server_socket.settimeout(0.1)
+        server_socket.setblocking(False)
         self.server_socket = server_socket
     
     @log_exitting_info
@@ -91,8 +92,10 @@ class Coordinator:
                 
                 with self.queue_lock:
                     self.queue.put((process_id, message_id, address))
-            except socket.timeout:
-                pass
+            except socket.error as e:
+                # please, see linux recv man https://man7.org/linux/man-pages/man2/recv.2.html
+                if e.errno == errno.EAGAIN or e.errno == errno.EWOULDBLOCK:
+                    pass
 
     def _process_release(self, process_id: str, address: Typings.address):
         if not self.critical_section_lock.locked():
